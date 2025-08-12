@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/9d4/watui/roomlist"
+
 type sessionState int
 
 const (
@@ -7,9 +9,12 @@ const (
 )
 
 type model struct {
-	state sessionState
+	state    sessionState
+	roomList roomlist.Model
 }
 
 func New() model {
-	return model{}
+	return model{
+		roomList: roomlist.New(),
+	}
 }
