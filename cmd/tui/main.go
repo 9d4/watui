@@ -22,7 +22,7 @@ func main() {
 	t := tui.New()
 	p := tea.NewProgram(t)
 	if _, err := p.Run(); err != nil {
-		log.Fatal("Failed to start fm", err)
+		log.Fatal("Failed to start watui", err)
 		os.Exit(1)
 	}
 }
