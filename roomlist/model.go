@@ -18,22 +18,21 @@ type Model struct {
 	selectedRoomIndex *int
 	openedRoomIndex   *int
 
-	selectedItemColor   lipgloss.AdaptiveColor
-	unselectedItemColor lipgloss.AdaptiveColor
-	inactiveItemColor   lipgloss.AdaptiveColor
-	separatorColor      lipgloss.AdaptiveColor
+	selectedItemColor lipgloss.AdaptiveColor
+	inactiveItemColor lipgloss.AdaptiveColor
+	openedItemColor   lipgloss.AdaptiveColor
 }
 
 func New() Model {
 	m := Model{
 		rooms: []Room{
-			{Title: "A", LastMessage: "Be good", Time: time.Now()},
-			{Title: "B", LastMessage: "Be Nice Be Nice Be Nice Be Nice Be Nice Be Nice Be Nice Be Nice", Time: time.Now().Add(time.Hour)},
-			{Title: "C", LastMessage: "Nice boy", Time: time.Now().Add(2 * time.Hour)},
+			{Title: "John", Time: time.Now()},
+			{Title: "Foo", Time: time.Now().Add(time.Hour)},
+			{Title: "C", Time: time.Now().Add(2 * time.Hour)},
 		},
-		selectedItemColor:   lipgloss.AdaptiveColor{Light: "212", Dark: "212"},
-		unselectedItemColor: lipgloss.AdaptiveColor{Light: "ffffff", Dark: "#000000"},
-		inactiveItemColor:   lipgloss.AdaptiveColor{Light: "243", Dark: "243"},
+		selectedItemColor: lipgloss.AdaptiveColor{Light: "212", Dark: "212"},
+		inactiveItemColor: lipgloss.AdaptiveColor{Light: "243", Dark: "243"},
+		openedItemColor:   lipgloss.AdaptiveColor{Light: "86", Dark: "86"},
 	}
 
 	return m

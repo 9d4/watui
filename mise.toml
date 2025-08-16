@@ -1,0 +1,5 @@
+[tasks.tui]
+run = "go run ./cmd/tui/main.go"
+
+[tools]
+go = "latest"

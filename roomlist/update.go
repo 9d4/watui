@@ -18,6 +18,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+
+		case "enter":
+			if m.openedRoomIndex == nil {
+				m.openedRoomIndex = new(int)
+			}
+
+			*m.openedRoomIndex = m.cursor
 		}
 	}
 
