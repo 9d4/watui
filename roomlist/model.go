@@ -1,6 +1,7 @@
 package roomlist
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -30,7 +31,7 @@ func New() Model {
 			{Title: "Foo", Time: time.Now().Add(time.Hour)},
 			{Title: "C", Time: time.Now().Add(2 * time.Hour)},
 		},
-		selectedItemColor: lipgloss.AdaptiveColor{Light: "212", Dark: "212"},
+		selectedItemColor: lipgloss.AdaptiveColor{Dark: fmt.Sprintf("%d", 0b010101), Light: "212"},
 		inactiveItemColor: lipgloss.AdaptiveColor{Light: "243", Dark: "243"},
 		openedItemColor:   lipgloss.AdaptiveColor{Light: "86", Dark: "86"},
 	}
