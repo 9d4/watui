@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/9d4/watui/internal/tui"
+	"github.com/9d4/watui/wa"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -19,7 +20,13 @@ func main() {
 		defer f.Close()
 	}
 
-	t := tui.New()
+	logger, err := wa.CreateFileLogger("watui.log")
+	if err != nil {
+		log.Fatalf("cannot open file for log: %w", err)
+	}
+
+	m := wa.NewManager(logger)
+	t := tui.New(m)
 	p := tea.NewProgram(t)
 	if _, err := p.Run(); err != nil {
 		log.Fatal("Failed to start watui", err)

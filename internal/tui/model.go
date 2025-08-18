@@ -2,35 +2,48 @@ package tui
 
 import (
 	"github.com/9d4/watui/roomlist"
+	"github.com/9d4/watui/wa"
 	"github.com/charmbracelet/bubbles/spinner"
+	"go.mau.fi/whatsmeow"
 )
 
 type sessionState int
 
 const (
-	stateLoading sessionState = iota
+	stateInit sessionState = iota
 	stateLogin
 	stateIdle
 )
 
 type model struct {
-	state       sessionState
-	roomList    roomlist.Model
+	state    sessionState
+	roomList roomlist.Model
+
 	loading     spinner.Model
 	loadingText string
-	loginEvent  chan any
+
+	wa       *wa.Manager
+	events   chan any
+	waQRCode string
+
+	cli *whatsmeow.Client
 }
 
-func New() model {
+func New(wa *wa.Manager) model {
 	return model{
 		loading:     spinner.New(spinner.WithSpinner(spinner.Dot)),
 		loadingText: "Loading",
 		roomList:    roomlist.New(),
-		loginEvent:  make(chan any),
+
+		wa:     wa,
+		events: make(chan any),
 	}
 }
 
-type (
-	loadingLogin struct{}
-	loggedIn     struct{}
-)
+type pairQrMsg struct {
+	Code string
+}
+
+type loggedInMsg struct {
+	cli *whatsmeow.Client
+}
