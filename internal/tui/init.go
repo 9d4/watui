@@ -30,17 +30,19 @@ func (m model) run() tea.Cmd {
 					m.events <- pairQrMsg{Code: evt.Code}
 				} else {
 					m.events <- pairQrMsg{}
-					m.events <- loggedInMsg{}
+					m.events <- loggedInMsg{cli: cli}
 				}
 			}
 		}
 
-		err := cli.Connect()
-		if err != nil {
-			log.Fatal(err)
+		if !cli.IsConnected() {
+			err := cli.Connect()
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
-		m.events <- loggedInMsg{cli: cli}
 
+		m.events <- loggedInMsg{cli: cli}
 		return nil
 	}
 }
