@@ -9,7 +9,7 @@ import (
 func (m Model) View() string {
 	var roomList strings.Builder
 
-	for i, item := range m.rooms {
+	for i, item := range m.Rooms {
 		time := item.Time.Format("02/01 15:04")
 
 		switch {

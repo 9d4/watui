@@ -43,6 +43,10 @@ func (m model) run() tea.Cmd {
 		}
 
 		m.events <- loggedInMsg{cli: cli}
+		cli.AddEventHandler(func(evt any) {
+			m.events <- waEvent{evt}
+		})
+
 		return nil
 	}
 }

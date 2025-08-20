@@ -40,6 +40,11 @@ func New(wa *wa.Manager) model {
 	}
 }
 
+// Event wrapper from whatsmeow
+type waEvent struct {
+	evt any
+}
+
 type pairQrMsg struct {
 	Code string
 }

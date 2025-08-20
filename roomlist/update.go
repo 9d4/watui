@@ -10,7 +10,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		key := msg.String()
 		switch key {
 		case "j", "down":
-			if len(m.rooms)-1 != m.cursor {
+			if len(m.Rooms)-1 != m.cursor {
 				m.cursor++
 			}
 

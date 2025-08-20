@@ -14,7 +14,7 @@ type Room struct {
 }
 
 type Model struct {
-	rooms             []Room
+	Rooms             []Room
 	cursor            int
 	selectedRoomIndex *int
 	openedRoomIndex   *int
@@ -26,7 +26,7 @@ type Model struct {
 
 func New() Model {
 	m := Model{
-		rooms: []Room{
+		Rooms: []Room{
 			{Title: "John", Time: time.Now()},
 			{Title: "Foo", Time: time.Now().Add(time.Hour)},
 			{Title: "C", Time: time.Now().Add(2 * time.Hour)},
