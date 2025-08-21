@@ -24,6 +24,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateIdle
 		m.cli = msg.cli
 		if msg.cli == nil {
+			cmds = append(cmds, m.waitEvents())
 			panic("cli is nil")
 		}
 		cmds = append(cmds, m.waitEvents())
