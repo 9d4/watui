@@ -40,9 +40,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state != stateIdle {
 				break
 			}
-			wamsg := m.cli.BuildHistorySyncRequest(&types.MessageInfo{}, 50)
-			println("connected event")
-			println(wamsg.Chat)
 
 		case *events.LoggedOut:
 			return m, func() tea.Msg {
