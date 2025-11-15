@@ -35,22 +35,31 @@ type model struct {
 
 	qrStatus string
 
-	width  int
-	height int
+	width        int
+	height       int
+	devMode      bool
+	devLogs      []string
+	historyReady bool
+	syncOverlay  syncOverlayState
 
 	cli *whatsmeow.Client
 }
 
-func New(wa *wa.Manager) model {
+type syncOverlayState struct {
+	active bool
+	label  string
+}
+
+func New(wa *wa.Manager, devMode bool) model {
 	return model{
 		state:         stateLoading,
 		loading:       spinner.New(spinner.WithSpinner(spinner.Dot)),
 		syncProgress:  progress.New(progress.WithDefaultGradient()),
 		roomList:      roomlist.New(),
 		statusMessage: "Menyiapkan WhatsApp session...",
-
-		wa:     wa,
-		events: make(chan any),
+		devMode:       devMode,
+		wa:            wa,
+		events:        make(chan any),
 	}
 }
 
@@ -81,4 +90,16 @@ func (e errMsg) Error() string {
 		return ""
 	}
 	return e.err.Error()
+}
+
+func (m *model) pushDevLog(entry string) {
+	if !m.devMode || entry == "" {
+		return
+	}
+
+	const maxLogs = 5
+	m.devLogs = append(m.devLogs, entry)
+	if len(m.devLogs) > maxLogs {
+		m.devLogs = m.devLogs[len(m.devLogs)-maxLogs:]
+	}
 }

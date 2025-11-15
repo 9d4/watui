@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,9 @@ import (
 )
 
 func main() {
+	devMode := flag.Bool("dev", false, "enable developer notifications")
+	flag.Parse()
+
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
@@ -26,7 +30,7 @@ func main() {
 	}
 
 	m := wa.NewManager(logger)
-	t := tui.New(m)
+	t := tui.New(m, *devMode)
 	p := tea.NewProgram(t)
 	if _, err := p.Run(); err != nil {
 		log.Fatal("Failed to start watui", err)

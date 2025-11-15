@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -41,9 +40,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cli.Store.ID == nil {
 			m.state = stateWelcome
 			m.statusMessage = "Tekan Enter untuk mulai pairing"
+			m.historyReady = false
 		} else {
 			m.state = stateConnecting
 			m.statusMessage = "Menghubungkan ke WhatsApp..."
+			m.historyReady = true
 			appendCmd(m.connectClient())
 		}
 
@@ -51,6 +52,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.waQRCode = msg.Code
 		m.state = statePairing
 		m.qrStatus = ""
+		m.historyReady = false
+		m.syncOverlay = syncOverlayState{}
 		appendCmd(m.waitEvents())
 
 	case qrStatusMsg:
@@ -62,6 +65,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.waQRCode = ""
 			m.state = stateHistorySync
 			m.historyMessage = "Menunggu history dari WhatsApp..."
+			m.historyReady = false
+			m.syncOverlay = syncOverlayState{}
 			appendCmd(m.syncProgress.SetPercent(0))
 		case whatsmeow.QRChannelTimeout.Event:
 			m.qrStatus = "Sesi pairing habis, coba ulangi"
@@ -82,14 +87,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.qrStatus = fmt.Sprintf("Status pairing: %s", msg.Status)
 		}
 
+		if m.state == stateWelcome {
+			m.syncOverlay = syncOverlayState{}
+		}
+
 	case waEvent:
 		appendCmd(m.waitEvents())
 
 		switch evt := msg.evt.(type) {
 		case *events.Connected:
-			if m.state != stateHistorySync {
+			if m.historyReady {
 				m.state = stateChats
 				m.statusMessage = ""
+			} else {
+				m.state = stateHistorySync
 			}
 
 		case *events.LoggedOut:
@@ -107,13 +118,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					progress = 1
 				}
 
-				if progress >= 1 {
-					m.state = stateChats
-					m.statusMessage = ""
-					appendCmd(m.syncProgress.SetPercent(1))
-					break
-				}
-
 				appendCmd(m.syncProgress.SetPercent(progress))
 
 				var syncLabel string
@@ -123,17 +127,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					syncLabel = "history"
 				}
 
-				m.historyMessage = fmt.Sprintf(
+				info := fmt.Sprintf(
 					"Sinkronisasi %s · %d chat",
 					syncLabel,
 					len(evt.Data.GetConversations()),
 				)
 
-				m.state = stateHistorySync
+				if m.historyReady || m.state == stateChats {
+					if progress >= 1 {
+						m.syncOverlay = syncOverlayState{}
+					} else {
+						m.syncOverlay = syncOverlayState{
+							active: true,
+							label:  info,
+						}
+					}
+				} else {
+					m.historyMessage = info
+					m.state = stateHistorySync
+				}
+
+				if progress >= 1 {
+					m.historyReady = true
+					m.state = stateChats
+					m.statusMessage = ""
+					m.syncOverlay = syncOverlayState{}
+				}
 			}
 
 		case *events.Message:
-			log.Println("Received whatsapp message: ", evt.Info.Chat.String(), "-", evt.Info.Sender.String(), "-", evt.Info.Type)
+			m.pushDevLog(fmt.Sprintf(
+				"%s ← %s (%s)",
+				evt.Info.Chat.String(),
+				evt.Info.Sender.String(),
+				evt.Info.Type,
+			))
 		}
 
 	case errMsg:
@@ -170,6 +198,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = statePairing
 				m.statusMessage = "Menghubungkan..."
 				m.qrStatus = ""
+				m.historyReady = false
 				appendCmd(m.startPairing())
 			}
 		}

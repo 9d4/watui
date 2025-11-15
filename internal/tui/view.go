@@ -33,6 +33,15 @@ var (
 			Padding(0, 2).
 			Foreground(lipgloss.Color("0")).
 			Background(lipgloss.Color("10"))
+	logOverlayStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			BorderStyle(lipgloss.RoundedBorder()).
+			Foreground(lipgloss.Color("253")).
+			Background(lipgloss.Color("60"))
+	syncOverlayStyle = lipgloss.NewStyle().
+				Padding(0, 1).
+				BorderStyle(lipgloss.NormalBorder()).
+				Foreground(lipgloss.Color("229"))
 )
 
 func (m model) View() string {
@@ -61,12 +70,38 @@ func (m model) View() string {
 		content = m.loadingStatusView()
 	}
 
+	innerWidth := m.contentWidth()
+	innerHeight := m.contentHeight()
+
+	if m.state != stateChats {
+		content = lipgloss.Place(
+			innerWidth,
+			innerHeight,
+			lipgloss.Center,
+			lipgloss.Center,
+			content,
+		)
+	}
+
+	var sections []string
+	if logs := m.devLogView(innerWidth); logs != "" {
+		sections = append(sections, logs)
+	}
+
+	sections = append(sections, content)
+
+	if overlay := m.syncOverlayView(innerWidth); overlay != "" {
+		sections = append(sections, overlay)
+	}
+
+	final := lipgloss.JoinVertical(lipgloss.Top, sections...)
+
 	frame := appFrameStyle
 	if m.width > 0 && m.height > 0 {
 		frame = frame.Width(m.width).Height(m.height)
 	}
 
-	return frame.Render(content)
+	return frame.Render(final)
 }
 
 func (m model) loadingStatusView() string {
@@ -139,7 +174,8 @@ func (m model) historySyncView() string {
 }
 
 func (m model) chatLayout() string {
-	leftWidth, rightWidth := m.computePaneWidths()
+	contentWidth := m.contentWidth()
+	leftWidth, rightWidth := m.computePaneWidths(contentWidth)
 
 	left := leftPaneStyle.Width(leftWidth).Render(m.roomList.View())
 	right := rightPaneStyle.Width(rightWidth).Render(m.chatPane(rightWidth))
@@ -147,19 +183,19 @@ func (m model) chatLayout() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
-func (m model) computePaneWidths() (int, int) {
-	if m.width <= 0 {
+func (m model) computePaneWidths(total int) (int, int) {
+	if total <= 0 {
 		return 32, 48
 	}
 
-	left := m.width / 3
+	left := total / 3
 	if left < 24 {
 		left = 24
 	}
 
-	right := m.width - left - 6
-	if right < 24 {
-		right = 24
+	right := total - left
+	if right < 32 {
+		right = 32
 	}
 
 	return left, right
@@ -168,7 +204,7 @@ func (m model) computePaneWidths() (int, int) {
 func (m model) chatPane(width int) string {
 	room := m.roomList.OpenedRoom()
 	if room == nil {
-		h := m.height - 6
+		h := m.contentHeight()
 		if h < 8 {
 			h = 8
 		}
@@ -190,4 +226,61 @@ func (m model) chatPane(width int) string {
 		"",
 		body,
 	)
+}
+
+func (m model) contentWidth() int {
+	if m.width <= 0 {
+		return 80
+	}
+
+	w := m.width - 6
+	if w < 40 {
+		return 40
+	}
+	return w
+}
+
+func (m model) contentHeight() int {
+	if m.height <= 0 {
+		return 24
+	}
+
+	h := m.height - 4
+	if h < 12 {
+		return 12
+	}
+	return h
+}
+
+func (m model) devLogView(width int) string {
+	if !m.devMode || len(m.devLogs) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	for _, item := range m.devLogs {
+		b.WriteString("• ")
+		b.WriteString(item)
+		b.WriteString("\n")
+	}
+
+	box := logOverlayStyle.Render(strings.TrimSuffix(b.String(), "\n"))
+	return lipgloss.PlaceHorizontal(width, lipgloss.Right, box)
+}
+
+func (m model) syncOverlayView(width int) string {
+	if !m.syncOverlay.active {
+		return ""
+	}
+
+	label := m.syncOverlay.label
+	if label == "" {
+		label = "Sinkronisasi data"
+	}
+
+	box := syncOverlayStyle.Render(
+		label + "\n" + m.syncProgress.View(),
+	)
+
+	return lipgloss.PlaceHorizontal(width, lipgloss.Right, box)
 }
