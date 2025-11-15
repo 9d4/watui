@@ -39,10 +39,7 @@ func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) []roomlist.Ro
 
 		rooms = append(rooms, *room)
 		m.chatTitles[room.ID] = room.Title
-	}
-
-	if len(rooms) > 0 {
-		m.roomList = m.roomList.ReplaceRooms(rooms)
+		m.roomList = m.roomList.UpsertRoom(*room)
 	}
 
 	return rooms
