@@ -83,6 +83,7 @@ func (m model) Init() tea.Cmd {
 		m.roomList.Init(),
 		m.loading.Tick,
 		initialWindowSizeCmd(),
+		m.loadStoredRooms(),
 		m.initClient(),
 		m.waitEvents(),
 	)

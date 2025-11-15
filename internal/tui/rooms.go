@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/9d4/watui/chatstore"
 	"github.com/9d4/watui/roomlist"
+	tea "github.com/charmbracelet/bubbletea"
 	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
 	waHistorySync "go.mau.fi/whatsmeow/proto/waHistorySync"
 	waWeb "go.mau.fi/whatsmeow/proto/waWeb"
@@ -12,9 +15,9 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
-func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) {
+func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) []roomlist.Room {
 	if data == nil {
-		return
+		return nil
 	}
 
 	pushnames := make(map[string]string)
@@ -41,6 +44,8 @@ func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) {
 	if len(rooms) > 0 {
 		m.roomList = m.roomList.ReplaceRooms(rooms)
 	}
+
+	return rooms
 }
 
 func (m *model) roomFromConversation(conv *waHistorySync.Conversation, pushnames map[string]string) *roomlist.Room {
@@ -115,6 +120,47 @@ func (m *model) roomFromMessage(evt *events.Message) *roomlist.Room {
 	}
 
 	return &room
+}
+
+func (m model) persistHistory(data *waHistorySync.HistorySync, rooms []roomlist.Room) tea.Cmd {
+	if m.store == nil || data == nil {
+		return nil
+	}
+
+	progress := int(data.GetProgress())
+	chunk := int(data.GetChunkOrder())
+	syncType := ""
+	if data.SyncType != nil {
+		syncType = data.GetSyncType().String()
+	}
+
+	state := chatstore.SyncState{
+		Progress:   progress,
+		ChunkOrder: chunk,
+		SyncType:   syncType,
+	}
+
+	return func() tea.Msg {
+		ctx := context.Background()
+		if err := m.store.PersistHistory(ctx, rooms, state); err != nil {
+			return errMsg{err: fmt.Errorf("gagal menyimpan history: %w", err)}
+		}
+		return nil
+	}
+}
+
+func (m model) persistRoom(room roomlist.Room) tea.Cmd {
+	if m.store == nil || room.ID == "" {
+		return nil
+	}
+
+	return func() tea.Msg {
+		ctx := context.Background()
+		if err := m.store.UpsertRoom(ctx, room); err != nil {
+			return errMsg{err: fmt.Errorf("gagal menyimpan chat: %w", err)}
+		}
+		return nil
+	}
 }
 
 func conversationSummary(conv *waHistorySync.Conversation) string {

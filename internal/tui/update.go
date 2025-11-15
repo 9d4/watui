@@ -25,6 +25,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case roomsLoadedMsg:
+		if len(msg.rooms) > 0 {
+			m.roomList = m.roomList.ReplaceRooms(msg.rooms)
+			for _, room := range msg.rooms {
+				m.chatTitles[room.ID] = room.Title
+			}
+		}
+
+		if msg.sync.Progress > 0 {
+			appendCmd(m.syncProgress.SetPercent(float64(msg.sync.Progress) / 100))
+		}
+
+		if msg.sync.InProgress {
+			m.historyReady = false
+			if m.state == stateLoading {
+				m.state = stateHistorySync
+			}
+			m.historyMessage = fmt.Sprintf("Melanjutkan sinkronisasi · %d%%", msg.sync.Progress)
+		} else if msg.sync.Progress >= 100 {
+			m.historyReady = true
+			if m.state == stateLoading {
+				m.state = stateChats
+			}
+		}
+
+		if m.state == stateChats && msg.sync.InProgress {
+			m.syncOverlay = syncOverlayState{
+				active: true,
+				label:  fmt.Sprintf("Sinkronisasi lanjutan · %d%%", msg.sync.Progress),
+			}
+		}
+
 	case clientReadyMsg:
 		m.cli = msg.cli
 		if m.cli == nil {
@@ -113,7 +145,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case *events.HistorySync:
 			if evt.Data != nil {
-				m.applyHistoryRooms(evt.Data)
+				rooms := m.applyHistoryRooms(evt.Data)
 
 				progress := float64(evt.Data.GetProgress()) / 100
 				if progress > 1 {
@@ -121,6 +153,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				appendCmd(m.syncProgress.SetPercent(progress))
+				appendCmd(m.persistHistory(evt.Data, rooms))
 
 				var syncLabel string
 				if evt.Data.SyncType != nil {
@@ -161,6 +194,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if room := m.roomFromMessage(evt); room != nil {
 				m.roomList = m.roomList.UpsertRoom(*room)
 				m.chatTitles[room.ID] = room.Title
+				appendCmd(m.persistRoom(*room))
 			}
 
 			m.pushDevLog(fmt.Sprintf(

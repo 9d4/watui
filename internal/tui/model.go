@@ -1,10 +1,15 @@
 package tui
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/9d4/watui/chatstore"
 	"github.com/9d4/watui/roomlist"
 	"github.com/9d4/watui/wa"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 	"go.mau.fi/whatsmeow"
 )
 
@@ -30,6 +35,7 @@ type model struct {
 	historyMessage string
 
 	wa       *wa.Manager
+	store    *chatstore.Store
 	events   chan any
 	waQRCode string
 
@@ -51,7 +57,7 @@ type syncOverlayState struct {
 	label  string
 }
 
-func New(wa *wa.Manager, devMode bool) model {
+func New(wa *wa.Manager, store *chatstore.Store, devMode bool) model {
 	return model{
 		state:         stateLoading,
 		loading:       spinner.New(spinner.WithSpinner(spinner.Dot)),
@@ -60,6 +66,7 @@ func New(wa *wa.Manager, devMode bool) model {
 		statusMessage: "Menyiapkan WhatsApp session...",
 		devMode:       devMode,
 		wa:            wa,
+		store:         store,
 		events:        make(chan any),
 		chatTitles:    make(map[string]string),
 	}
@@ -103,5 +110,24 @@ func (m *model) pushDevLog(entry string) {
 	m.devLogs = append(m.devLogs, entry)
 	if len(m.devLogs) > maxLogs {
 		m.devLogs = m.devLogs[len(m.devLogs)-maxLogs:]
+	}
+}
+
+type roomsLoadedMsg struct {
+	rooms []roomlist.Room
+	sync  chatstore.SyncState
+}
+
+func (m model) loadStoredRooms() tea.Cmd {
+	if m.store == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		rooms, syncState, err := m.store.LoadAll(context.Background())
+		if err != nil {
+			return errMsg{err: fmt.Errorf("gagal memuat chat: %w", err)}
+		}
+		return roomsLoadedMsg{rooms: rooms, sync: syncState}
 	}
 }
