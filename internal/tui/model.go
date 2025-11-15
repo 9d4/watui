@@ -41,6 +41,7 @@ type model struct {
 	devLogs      []string
 	historyReady bool
 	syncOverlay  syncOverlayState
+	chatTitles   map[string]string
 
 	cli *whatsmeow.Client
 }
@@ -60,6 +61,7 @@ func New(wa *wa.Manager, devMode bool) model {
 		devMode:       devMode,
 		wa:            wa,
 		events:        make(chan any),
+		chatTitles:    make(map[string]string),
 	}
 }
 

@@ -113,6 +113,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case *events.HistorySync:
 			if evt.Data != nil {
+				m.applyHistoryRooms(evt.Data)
+
 				progress := float64(evt.Data.GetProgress()) / 100
 				if progress > 1 {
 					progress = 1
@@ -156,6 +158,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case *events.Message:
+			if room := m.roomFromMessage(evt); room != nil {
+				m.roomList = m.roomList.UpsertRoom(*room)
+				m.chatTitles[room.ID] = room.Title
+			}
+
 			m.pushDevLog(fmt.Sprintf(
 				"%s ← %s (%s)",
 				evt.Info.Chat.String(),
@@ -174,8 +181,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width = msg.Width - 2
+		m.height = msg.Height - 2
 
 	case tea.KeyMsg:
 		key := msg.String()

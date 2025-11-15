@@ -11,8 +11,7 @@ import (
 
 var (
 	appFrameStyle = lipgloss.NewStyle().
-			PaddingTop(2).
-			BorderStyle(lipgloss.RoundedBorder()).
+			Border(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("38"))
 
 	leftPaneStyle = lipgloss.NewStyle().
@@ -46,8 +45,6 @@ var (
 
 func (m model) View() string {
 	innerWidth, innerHeight := m.innerSize()
-	innerWidth -= 4
-	innerHeight -= 4
 	if innerWidth < 1 {
 		innerWidth = 1
 	}

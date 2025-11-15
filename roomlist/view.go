@@ -10,7 +10,10 @@ func (m Model) View() string {
 	var roomList strings.Builder
 
 	for i, item := range m.Rooms {
-		time := item.Time.Format("02/01 15:04")
+		timeStr := "-"
+		if !item.Time.IsZero() {
+			timeStr = item.Time.Format("02/01 15:04")
+		}
 		lastMessage := item.LastMessage
 		if lastMessage == "" {
 			lastMessage = "-"
@@ -21,7 +24,7 @@ func (m Model) View() string {
 			roomList.WriteString(
 				lipgloss.NewStyle().
 					Bold(true).
-					Render(time) + " ",
+					Render(timeStr) + " ",
 			)
 
 			roomList.WriteString(
@@ -35,7 +38,7 @@ func (m Model) View() string {
 			roomList.WriteString(
 				lipgloss.NewStyle().
 					Bold(true).
-					Render(time) + " ",
+					Render(timeStr) + " ",
 			)
 
 			roomList.WriteString(
@@ -49,7 +52,7 @@ func (m Model) View() string {
 			roomList.WriteString(
 				lipgloss.NewStyle().
 					Faint(true).
-					Render(time) + " ",
+					Render(timeStr) + " ",
 			)
 
 			roomList.WriteString(
