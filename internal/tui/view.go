@@ -11,7 +11,8 @@ import (
 
 var (
 	appFrameStyle = lipgloss.NewStyle().
-			PaddingTop(2).
+			MarginTop(4).
+			MarginBottom(0).
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("38"))
 
@@ -107,14 +108,6 @@ func (m model) View() string {
 		mainAlignH = lipgloss.Left
 		mainAlignV = lipgloss.Top
 		mainContent = m.chatLayout(innerWidth, mainHeight)
-	} else {
-		mainContent = lipgloss.Place(
-			innerWidth,
-			mainHeight,
-			lipgloss.Center,
-			lipgloss.Center,
-			baseContent,
-		)
 	}
 
 	sections = append(sections,

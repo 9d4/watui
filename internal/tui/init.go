@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"go.mau.fi/whatsmeow"
+	"golang.org/x/term"
 )
 
 func (m model) initClient() tea.Cmd {
@@ -80,7 +82,18 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.roomList.Init(),
 		m.loading.Tick,
+		initialWindowSizeCmd(),
 		m.initClient(),
 		m.waitEvents(),
 	)
+}
+
+func initialWindowSizeCmd() tea.Cmd {
+	return func() tea.Msg {
+		width, height, err := term.GetSize(int(os.Stdout.Fd()))
+		if err != nil || width == 0 || height == 0 {
+			return nil
+		}
+		return tea.WindowSizeMsg{Width: width, Height: height}
+	}
 }
