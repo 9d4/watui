@@ -41,13 +41,14 @@ type model struct {
 
 	qrStatus string
 
-	width        int
-	height       int
-	devMode      bool
-	devLogs      []string
-	historyReady bool
-	syncOverlay  syncOverlayState
-	chatTitles   map[string]string
+	width         int
+	height        int
+	devMode       bool
+	devLogs       []string
+	historyReady  bool
+	syncOverlay   syncOverlayState
+	chatTitles    map[string]string
+	chatSummaries map[string][]string
 
 	cli *whatsmeow.Client
 }
@@ -69,6 +70,7 @@ func New(wa *wa.Manager, store *chatstore.Store, devMode bool) model {
 		store:         store,
 		events:        make(chan any),
 		chatTitles:    make(map[string]string),
+		chatSummaries: make(map[string][]string),
 	}
 }
 

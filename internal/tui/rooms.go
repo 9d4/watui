@@ -15,6 +15,8 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
+const maxSummaryLines = 50
+
 func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) []roomlist.Room {
 	if data == nil {
 		return nil
@@ -32,32 +34,35 @@ func (m *model) applyHistoryRooms(data *waHistorySync.HistorySync) []roomlist.Ro
 
 	var rooms []roomlist.Room
 	for _, conv := range data.GetConversations() {
-		room := m.roomFromConversation(conv, pushnames)
+		room, messages := m.roomFromConversation(conv, pushnames)
 		if room == nil {
 			continue
 		}
 
 		rooms = append(rooms, *room)
 		m.chatTitles[room.ID] = room.Title
+		if len(messages) > 0 {
+			m.storeSummaries(room.ID, messages)
+		}
 		m.roomList = m.roomList.UpsertRoom(*room)
 	}
 
 	return rooms
 }
 
-func (m *model) roomFromConversation(conv *waHistorySync.Conversation, pushnames map[string]string) *roomlist.Room {
+func (m *model) roomFromConversation(conv *waHistorySync.Conversation, pushnames map[string]string) (*roomlist.Room, []string) {
 	if conv == nil {
-		return nil
+		return nil, nil
 	}
 
 	jid := conv.GetID()
 	if jid == "" {
-		return nil
+		return nil, nil
 	}
 
 	parsed, err := types.ParseJID(jid)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 
 	title := conv.GetName()
@@ -81,7 +86,7 @@ func (m *model) roomFromConversation(conv *waHistorySync.Conversation, pushnames
 		LastMessage: lastMessage,
 		Time:        ts,
 		UnreadCount: int(conv.GetUnreadCount()),
-	}
+	}, conversationMessages(conv)
 }
 
 func (m *model) roomFromMessage(evt *events.Message) *roomlist.Room {
@@ -115,6 +120,8 @@ func (m *model) roomFromMessage(evt *events.Message) *roomlist.Room {
 		LastMessage: summary,
 		Time:        ts,
 	}
+
+	m.appendSummaryLine(room.ID, formatMessageLine(ts, senderFromEvent(evt), summary))
 
 	return &room
 }
@@ -218,4 +225,94 @@ func summarizeMessage(msg *waE2E.Message) string {
 	default:
 		return "Pesan baru"
 	}
+}
+
+func conversationMessages(conv *waHistorySync.Conversation) []string {
+	var lines []string
+	for _, msg := range conv.GetMessages() {
+		if msg == nil {
+			continue
+		}
+
+		line := historyMessageLine(msg.GetMessage())
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+func historyMessageLine(info *waWeb.WebMessageInfo) string {
+	if info == nil {
+		return ""
+	}
+
+	ts := time.Unix(int64(info.GetMessageTimestamp()), 0)
+	body := summarizeMessage(info.GetMessage())
+	if body == "" {
+		return ""
+	}
+
+	sender := info.GetParticipant()
+	if sender == "" {
+		sender = info.GetPushName()
+	}
+	if sender == "" && info.GetKey() != nil {
+		if info.GetKey().GetFromMe() {
+			sender = "Saya"
+		} else {
+			sender = info.GetKey().GetRemoteJID()
+		}
+	}
+	if sender == "" {
+		sender = "Unknown"
+	}
+
+	return formatMessageLine(ts, sender, body)
+}
+
+func senderFromEvent(evt *events.Message) string {
+	if evt.Info.Sender.User != "" || evt.Info.Sender.Server != "" {
+		return evt.Info.Sender.String()
+	}
+	return evt.Info.Chat.String()
+}
+
+func formatMessageLine(ts time.Time, sender, body string) string {
+	if body == "" {
+		body = "-"
+	}
+	if sender == "" {
+		sender = "Unknown"
+	}
+
+	timeLabel := "-"
+	if !ts.IsZero() {
+		timeLabel = ts.Format("02 Jan 15:04")
+	}
+
+	return fmt.Sprintf("[%s] %s: %s", timeLabel, sender, body)
+}
+
+func (m *model) storeSummaries(jid string, lines []string) {
+	if len(lines) == 0 {
+		return
+	}
+
+	if len(lines) > maxSummaryLines {
+		lines = lines[len(lines)-maxSummaryLines:]
+	}
+	m.chatSummaries[jid] = append([]string(nil), lines...)
+}
+
+func (m *model) appendSummaryLine(jid, line string) {
+	if line == "" {
+		return
+	}
+
+	lines := append(m.chatSummaries[jid], line)
+	if len(lines) > maxSummaryLines {
+		lines = lines[len(lines)-maxSummaryLines:]
+	}
+	m.chatSummaries[jid] = lines
 }

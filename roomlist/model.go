@@ -48,6 +48,22 @@ func (m Model) OpenedRoom() *Room {
 	return &room
 }
 
+func (m Model) CursorRoom() *Room {
+	if len(m.Rooms) == 0 {
+		return nil
+	}
+
+	if m.cursor < 0 {
+		return nil
+	}
+	if m.cursor >= len(m.Rooms) {
+		return nil
+	}
+
+	room := m.Rooms[m.cursor]
+	return &room
+}
+
 func (m Model) ReplaceRooms(rooms []Room) Model {
 	slices.SortFunc(rooms, func(a, b Room) int {
 		switch {

@@ -30,6 +30,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.roomList = m.roomList.ReplaceRooms(msg.rooms)
 			for _, room := range msg.rooms {
 				m.chatTitles[room.ID] = room.Title
+				if room.LastMessage != "" && m.chatSummaries[room.ID] == nil {
+					line := formatMessageLine(room.Time, "Terakhir", room.LastMessage)
+					m.chatSummaries[room.ID] = []string{line}
+				}
 			}
 		}
 

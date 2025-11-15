@@ -3,8 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
+	"github.com/9d4/watui/roomlist"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mdp/qrterminal/v3"
 )
@@ -232,7 +232,7 @@ func (m model) computePaneWidths(total int) (int, int) {
 }
 
 func (m model) chatPane(width, height int) string {
-	room := m.roomList.OpenedRoom()
+	room := m.activeRoom()
 	if room == nil {
 		h := height
 		if h < 6 {
@@ -246,16 +246,55 @@ func (m model) chatPane(width, height int) string {
 			Render("watui")
 	}
 
-	header := titleStyle.Render(room.Title)
-	timeInfo := subtleStyle.Render(room.Time.Format(time.RFC822))
-	body := subtleStyle.Render("Belum ada percakapan yang dimuat untuk room ini.")
+	timeLabel := "-"
+	if !room.Time.IsZero() {
+		timeLabel = room.Time.Format("02 Jan 15:04")
+	}
+
+	meta := fmt.Sprintf("%s · %s", room.ID, timeLabel)
+	unread := "Tidak ada pesan baru"
+	if room.UnreadCount > 0 {
+		unread = fmt.Sprintf("%d pesan belum dibaca", room.UnreadCount)
+	}
+
+	lastMsg := "Belum ada pesan"
+	if room.LastMessage != "" {
+		lastMsg = room.LastMessage
+	}
+
+	history := m.chatSummaries[room.ID]
+	var historyBuilder strings.Builder
+	if len(history) == 0 {
+		historyBuilder.WriteString("Belum ada riwayat pesan.\n")
+	} else {
+		start := 0
+		if len(history) > 10 {
+			start = len(history) - 10
+		}
+		for _, line := range history[start:] {
+			historyBuilder.WriteString("• " + line + "\n")
+		}
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		fmt.Sprintf("%s  %s", header, timeInfo),
+		titleStyle.Render(room.Title),
+		subtleStyle.Render(meta),
+		subtleStyle.Render(unread),
 		"",
-		body,
+		"Pesan terakhir:",
+		lastMsg,
+		"",
+		"Riwayat terbaru:",
+		historyBuilder.String(),
 	)
+}
+
+func (m model) activeRoom() *roomlist.Room {
+	if room := m.roomList.OpenedRoom(); room != nil {
+		return room
+	}
+	return m.roomList.CursorRoom()
 }
 
 func (m model) innerSize() (int, int) {
