@@ -11,9 +11,9 @@ import (
 
 var (
 	appFrameStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("63")).
-			Padding(1, 2)
+			PaddingTop(2).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("38"))
 
 	leftPaneStyle = lipgloss.NewStyle().
 			Padding(0, 2).
@@ -45,61 +45,101 @@ var (
 )
 
 func (m model) View() string {
-	var content string
+	innerWidth, innerHeight := m.innerSize()
+	if innerWidth < 1 {
+		innerWidth = 1
+	}
+	if innerHeight < 3 {
+		innerHeight = 3
+	}
+
+	var baseContent string
 
 	switch m.state {
 	case stateLoading, stateConnecting:
-		content = m.loadingStatusView()
+		baseContent = m.loadingStatusView()
 
 	case stateError:
-		content = m.errorView()
+		baseContent = m.errorView()
 
 	case stateWelcome:
-		content = m.welcomeView()
+		baseContent = m.welcomeView()
 
 	case statePairing:
-		content = m.pairingView()
+		baseContent = m.pairingView()
 
 	case stateHistorySync:
-		content = m.historySyncView()
-
-	case stateChats:
-		content = m.chatLayout()
+		baseContent = m.historySyncView()
 
 	default:
-		content = m.loadingStatusView()
+		baseContent = m.loadingStatusView()
 	}
 
-	innerWidth := m.contentWidth()
-	innerHeight := m.contentHeight()
+	logBox := m.devLogBox()
+	logHeight := lipgloss.Height(logBox)
+	syncBox := m.syncOverlayBox()
+	syncHeight := lipgloss.Height(syncBox)
 
-	if m.state != stateChats {
-		content = lipgloss.Place(
-			innerWidth,
-			innerHeight,
-			lipgloss.Center,
-			lipgloss.Center,
-			content,
+	if logHeight > innerHeight {
+		logHeight = innerHeight / 3
+	}
+
+	if syncHeight > innerHeight-logHeight {
+		syncHeight = (innerHeight - logHeight) / 3
+	}
+
+	mainHeight := innerHeight - logHeight - syncHeight
+	if mainHeight < 3 {
+		mainHeight = 3
+	}
+
+	sections := make([]string, 0, 3)
+	if logHeight > 0 {
+		sections = append(sections,
+			lipgloss.Place(innerWidth, logHeight, lipgloss.Right, lipgloss.Top, logBox),
 		)
 	}
 
-	var sections []string
-	if logs := m.devLogView(innerWidth); logs != "" {
-		sections = append(sections, logs)
+	mainContent := baseContent
+	mainAlignH := lipgloss.Center
+	mainAlignV := lipgloss.Center
+	if m.state == stateChats {
+		mainAlignH = lipgloss.Left
+		mainAlignV = lipgloss.Top
+		mainContent = m.chatLayout(innerWidth, mainHeight)
+	} else {
+		mainContent = lipgloss.Place(
+			innerWidth,
+			mainHeight,
+			lipgloss.Center,
+			lipgloss.Center,
+			baseContent,
+		)
 	}
 
-	sections = append(sections, content)
+	sections = append(sections,
+		lipgloss.Place(innerWidth, mainHeight, mainAlignH, mainAlignV, mainContent),
+	)
 
-	if overlay := m.syncOverlayView(innerWidth); overlay != "" {
-		sections = append(sections, overlay)
+	if syncHeight > 0 {
+		sections = append(sections,
+			lipgloss.Place(innerWidth, syncHeight, lipgloss.Right, lipgloss.Bottom, syncBox),
+		)
 	}
 
 	final := lipgloss.JoinVertical(lipgloss.Top, sections...)
 
 	frame := appFrameStyle
-	if m.width > 0 && m.height > 0 {
-		frame = frame.Width(m.width).Height(m.height)
+	width := m.width
+	height := m.height
+	frameWidth, frameHeight := appFrameStyle.GetFrameSize()
+	if width == 0 {
+		width = innerWidth + frameWidth
 	}
+	if height == 0 {
+		height = innerHeight + frameHeight
+	}
+	frame = frame.Width(width).Height(height)
 
 	return frame.Render(final)
 }
@@ -173,14 +213,13 @@ func (m model) historySyncView() string {
 	return builder.String()
 }
 
-func (m model) chatLayout() string {
-	contentWidth := m.contentWidth()
-	leftWidth, rightWidth := m.computePaneWidths(contentWidth)
+func (m model) chatLayout(width, height int) string {
+	leftWidth, rightWidth := m.computePaneWidths(width)
 
-	left := leftPaneStyle.Width(leftWidth).Render(m.roomList.View())
-	right := rightPaneStyle.Width(rightWidth).Render(m.chatPane(rightWidth))
+	leftPane := leftPaneStyle.Width(leftWidth).Height(height).Render(m.roomList.View())
+	rightPane := rightPaneStyle.Width(rightWidth).Height(height).Render(m.chatPane(rightWidth, height))
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 }
 
 func (m model) computePaneWidths(total int) (int, int) {
@@ -201,12 +240,12 @@ func (m model) computePaneWidths(total int) (int, int) {
 	return left, right
 }
 
-func (m model) chatPane(width int) string {
+func (m model) chatPane(width, height int) string {
 	room := m.roomList.OpenedRoom()
 	if room == nil {
-		h := m.contentHeight()
-		if h < 8 {
-			h = 8
+		h := height
+		if h < 6 {
+			h = 6
 		}
 		return placeholderStyle.
 			Width(width).
@@ -228,31 +267,33 @@ func (m model) chatPane(width int) string {
 	)
 }
 
-func (m model) contentWidth() int {
-	if m.width <= 0 {
-		return 80
+func (m model) innerSize() (int, int) {
+	frameWidth, frameHeight := appFrameStyle.GetFrameSize()
+
+	width := m.width
+	height := m.height
+
+	if width <= 0 {
+		width = 80
+	}
+	if height <= 0 {
+		height = 24
 	}
 
-	w := m.width - 6
-	if w < 40 {
-		return 40
+	width -= frameWidth
+	height -= frameHeight
+
+	if width < 40 {
+		width = 40
 	}
-	return w
+	if height < 12 {
+		height = 12
+	}
+
+	return width, height
 }
 
-func (m model) contentHeight() int {
-	if m.height <= 0 {
-		return 24
-	}
-
-	h := m.height - 4
-	if h < 12 {
-		return 12
-	}
-	return h
-}
-
-func (m model) devLogView(width int) string {
+func (m model) devLogBox() string {
 	if !m.devMode || len(m.devLogs) == 0 {
 		return ""
 	}
@@ -264,11 +305,10 @@ func (m model) devLogView(width int) string {
 		b.WriteString("\n")
 	}
 
-	box := logOverlayStyle.Render(strings.TrimSuffix(b.String(), "\n"))
-	return lipgloss.PlaceHorizontal(width, lipgloss.Right, box)
+	return logOverlayStyle.Render(strings.TrimSuffix(b.String(), "\n"))
 }
 
-func (m model) syncOverlayView(width int) string {
+func (m model) syncOverlayBox() string {
 	if !m.syncOverlay.active {
 		return ""
 	}
@@ -278,9 +318,5 @@ func (m model) syncOverlayView(width int) string {
 		label = "Sinkronisasi data"
 	}
 
-	box := syncOverlayStyle.Render(
-		label + "\n" + m.syncProgress.View(),
-	)
-
-	return lipgloss.PlaceHorizontal(width, lipgloss.Right, box)
+	return syncOverlayStyle.Render(label + "\n" + m.syncProgress.View())
 }
