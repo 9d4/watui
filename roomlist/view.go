@@ -11,6 +11,10 @@ func (m Model) View() string {
 
 	for i, item := range m.Rooms {
 		time := item.Time.Format("02/01 15:04")
+		lastMessage := item.LastMessage
+		if lastMessage == "" {
+			lastMessage = "-"
+		}
 
 		switch {
 		case m.openedRoomIndex != nil && *m.openedRoomIndex == i:
@@ -55,6 +59,11 @@ func (m Model) View() string {
 			)
 		}
 
+		roomList.WriteString(
+			lipgloss.NewStyle().
+				Faint(true).
+				Render("  "+lastMessage) + "\n\n",
+		)
 	}
 
 	return roomList.String()

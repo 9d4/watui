@@ -22,7 +22,7 @@ func main() {
 
 	logger, err := wa.CreateFileLogger("watui.log")
 	if err != nil {
-		log.Fatalf("cannot open file for log: %w", err)
+		log.Fatalf("cannot open file for log: %v", err)
 	}
 
 	m := wa.NewManager(logger)

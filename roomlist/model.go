@@ -14,10 +14,9 @@ type Room struct {
 }
 
 type Model struct {
-	Rooms             []Room
-	cursor            int
-	selectedRoomIndex *int
-	openedRoomIndex   *int
+	Rooms           []Room
+	cursor          int
+	openedRoomIndex *int
 
 	selectedItemColor lipgloss.AdaptiveColor
 	inactiveItemColor lipgloss.AdaptiveColor
@@ -27,9 +26,9 @@ type Model struct {
 func New() Model {
 	m := Model{
 		Rooms: []Room{
-			{Title: "John", Time: time.Now()},
-			{Title: "Foo", Time: time.Now().Add(time.Hour)},
-			{Title: "C", Time: time.Now().Add(2 * time.Hour)},
+			{Title: "John", LastMessage: "Nanti malam jadi?", Time: time.Now()},
+			{Title: "Foo", LastMessage: "Receipt received ✅", Time: time.Now().Add(-2 * time.Hour)},
+			{Title: "C", LastMessage: "Lanjut besok aja deh", Time: time.Now().Add(2 * time.Hour)},
 		},
 		selectedItemColor: lipgloss.AdaptiveColor{Dark: fmt.Sprintf("%d", 0b010101), Light: "212"},
 		inactiveItemColor: lipgloss.AdaptiveColor{Light: "243", Dark: "243"},
@@ -37,4 +36,18 @@ func New() Model {
 	}
 
 	return m
+}
+
+func (m Model) OpenedRoom() *Room {
+	if m.openedRoomIndex == nil {
+		return nil
+	}
+
+	idx := *m.openedRoomIndex
+	if idx < 0 || idx >= len(m.Rooms) {
+		return nil
+	}
+
+	room := m.Rooms[idx]
+	return &room
 }

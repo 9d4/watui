@@ -25,6 +25,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			*m.openedRoomIndex = m.cursor
+
+		case "esc":
+			m.openedRoomIndex = nil
 		}
 	}
 

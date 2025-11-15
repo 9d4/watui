@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/9d4/watui/roomlist"
 	"github.com/9d4/watui/wa"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"go.mau.fi/whatsmeow"
 )
@@ -10,30 +11,43 @@ import (
 type sessionState int
 
 const (
-	stateInit sessionState = iota
-	stateLogin
-	stateIdle
+	stateLoading sessionState = iota
+	stateWelcome
+	statePairing
+	stateHistorySync
+	stateConnecting
+	stateChats
+	stateError
 )
 
 type model struct {
 	state    sessionState
 	roomList roomlist.Model
 
-	loading     spinner.Model
-	loadingText string
+	loading        spinner.Model
+	syncProgress   progress.Model
+	statusMessage  string
+	historyMessage string
 
 	wa       *wa.Manager
 	events   chan any
 	waQRCode string
+
+	qrStatus string
+
+	width  int
+	height int
 
 	cli *whatsmeow.Client
 }
 
 func New(wa *wa.Manager) model {
 	return model{
-		loading:     spinner.New(spinner.WithSpinner(spinner.Dot)),
-		loadingText: "Loading",
-		roomList:    roomlist.New(),
+		state:         stateLoading,
+		loading:       spinner.New(spinner.WithSpinner(spinner.Dot)),
+		syncProgress:  progress.New(progress.WithDefaultGradient()),
+		roomList:      roomlist.New(),
+		statusMessage: "Menyiapkan WhatsApp session...",
 
 		wa:     wa,
 		events: make(chan any),
@@ -45,10 +59,26 @@ type waEvent struct {
 	evt any
 }
 
-type pairQrMsg struct {
+type clientReadyMsg struct {
+	cli *whatsmeow.Client
+}
+
+type qrCodeMsg struct {
 	Code string
 }
 
-type loggedInMsg struct {
-	cli *whatsmeow.Client
+type qrStatusMsg struct {
+	Status string
+	Err    error
+}
+
+type errMsg struct {
+	err error
+}
+
+func (e errMsg) Error() string {
+	if e.err == nil {
+		return ""
+	}
+	return e.err.Error()
 }

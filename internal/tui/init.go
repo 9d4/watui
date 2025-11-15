@@ -2,50 +2,69 @@ package tui
 
 import (
 	"context"
-	"log"
+	"errors"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"go.mau.fi/whatsmeow"
 )
 
-func (m model) run() tea.Cmd {
-	d, err := m.wa.C.GetFirstDevice(context.Background())
-	if err != nil {
-		log.Fatalf("error getting device: %w", err)
-	}
-
-	cli := whatsmeow.NewClient(d, m.wa.WaLog())
-
+func (m model) initClient() tea.Cmd {
 	return func() tea.Msg {
-		if cli.Store.ID == nil {
-			qrChan, _ := cli.GetQRChannel(context.Background())
+		d, err := m.wa.C.GetFirstDevice(context.Background())
+		if err != nil {
+			return errMsg{err: fmt.Errorf("gagal membaca device: %w", err)}
+		}
 
-			err = cli.Connect()
-			if err != nil {
-				log.Fatal(err)
-			}
+		return clientReadyMsg{cli: whatsmeow.NewClient(d, m.wa.WaLog())}
+	}
+}
 
+func (m model) startPairing() tea.Cmd {
+	return func() tea.Msg {
+		if m.cli == nil {
+			return errMsg{err: errors.New("client belum siap")}
+		}
+
+		qrChan, err := m.cli.GetQRChannel(context.Background())
+		if err != nil {
+			return errMsg{err: fmt.Errorf("gagal membuat qr channel: %w", err)}
+		}
+
+		go func() {
 			for evt := range qrChan {
-				if evt.Event == "code" {
-					m.events <- pairQrMsg{Code: evt.Code}
-				} else {
-					m.events <- pairQrMsg{}
-					m.events <- loggedInMsg{cli: cli}
+				switch evt.Event {
+				case whatsmeow.QRChannelEventCode:
+					m.events <- qrCodeMsg{Code: evt.Code}
+				case whatsmeow.QRChannelEventError:
+					m.events <- qrStatusMsg{Status: evt.Event, Err: evt.Error}
+				default:
+					m.events <- qrStatusMsg{Status: evt.Event}
 				}
 			}
+		}()
+
+		if err := m.cli.Connect(); err != nil {
+			return errMsg{err: fmt.Errorf("gagal connect: %w", err)}
 		}
 
-		if !cli.IsConnected() {
-			err := cli.Connect()
-			if err != nil {
-				log.Fatal(err)
-			}
+		return nil
+	}
+}
+
+func (m model) connectClient() tea.Cmd {
+	return func() tea.Msg {
+		if m.cli == nil {
+			return errMsg{err: errors.New("client belum siap")}
 		}
 
-		m.events <- loggedInMsg{cli: cli}
-		cli.AddEventHandler(func(evt any) {
-			m.events <- waEvent{evt}
-		})
+		if m.cli.IsConnected() {
+			return nil
+		}
+
+		if err := m.cli.Connect(); err != nil {
+			return errMsg{err: fmt.Errorf("gagal connect: %w", err)}
+		}
 
 		return nil
 	}
@@ -61,7 +80,7 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.roomList.Init(),
 		m.loading.Tick,
-		m.run(),
+		m.initClient(),
 		m.waitEvents(),
 	)
 }
