@@ -221,7 +221,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width - 2
 		m.height = msg.Height - 2
-		m.roomList = m.roomList.SetViewportHeight(m.contentHeight())
+		m.roomList = m.roomList.SetViewportHeight(10)
 
 	case tea.KeyMsg:
 		key := msg.String()
