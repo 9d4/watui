@@ -9,7 +9,10 @@ import (
 func (m Model) View() string {
 	var roomList strings.Builder
 
-	for i, item := range m.Rooms {
+	start, visible := m.visibleRooms()
+
+	for idx, item := range visible {
+		i := start + idx
 		timeStr := "-"
 		if !item.Time.IsZero() {
 			timeStr = item.Time.Format("02/01 15:04")

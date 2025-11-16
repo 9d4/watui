@@ -20,6 +20,9 @@ type Model struct {
 	Rooms           []Room
 	cursor          int
 	openedRoomIndex *int
+	viewStart       int
+	viewportHeight  int
+	pendingGoTop    bool
 
 	selectedItemColor lipgloss.AdaptiveColor
 	inactiveItemColor lipgloss.AdaptiveColor
@@ -91,6 +94,8 @@ func (m Model) ReplaceRooms(rooms []Room) Model {
 		m.openedRoomIndex = nil
 	}
 
+	m.ensureCursorVisible()
+
 	return m
 }
 
@@ -141,5 +146,65 @@ func (m Model) UpsertRoom(room Room) Model {
 		}
 	}
 
+	m.ensureCursorVisible()
+
 	return m
+}
+
+func (m Model) SetViewportHeight(h int) Model {
+	if h < 1 {
+		h = 1
+	}
+	m.viewportHeight = h
+	m.ensureCursorVisible()
+	return m
+}
+
+func (m *Model) ensureCursorVisible() {
+	if len(m.Rooms) == 0 {
+		m.cursor = 0
+		m.viewStart = 0
+		return
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if m.cursor >= len(m.Rooms) {
+		m.cursor = len(m.Rooms) - 1
+	}
+
+	if m.viewportHeight <= 0 {
+		m.viewStart = 0
+		return
+	}
+
+	if m.viewStart > m.cursor {
+		m.viewStart = m.cursor
+	}
+
+	maxStart := len(m.Rooms) - m.viewportHeight
+	if maxStart < 0 {
+		maxStart = 0
+	}
+
+	if m.cursor >= m.viewStart+m.viewportHeight {
+		m.viewStart = m.cursor - m.viewportHeight + 1
+	}
+
+	if m.viewStart > maxStart {
+		m.viewStart = maxStart
+	}
+}
+
+func (m Model) visibleRooms() (start int, rooms []Room) {
+	if m.viewportHeight <= 0 || len(m.Rooms) <= m.viewportHeight {
+		return 0, m.Rooms
+	}
+
+	end := m.viewStart + m.viewportHeight
+	if end > len(m.Rooms) {
+		end = len(m.Rooms)
+	}
+
+	return m.viewStart, m.Rooms[m.viewStart:end]
 }

@@ -323,6 +323,24 @@ func (m model) innerSize() (int, int) {
 	return width, height
 }
 
+func (m model) contentWidth() int {
+	width, _ := m.innerSize()
+	width -= 4
+	if width < 1 {
+		width = 1
+	}
+	return width
+}
+
+func (m model) contentHeight() int {
+	_, height := m.innerSize()
+	height -= 4
+	if height < 3 {
+		height = 3
+	}
+	return height
+}
+
 func (m model) devLogBox() string {
 	if !m.devMode || len(m.devLogs) == 0 {
 		return ""

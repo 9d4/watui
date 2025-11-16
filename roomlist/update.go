@@ -13,11 +13,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if len(m.Rooms)-1 != m.cursor {
 				m.cursor++
 			}
+			m.pendingGoTop = false
 
 		case "k", "up":
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			m.pendingGoTop = false
 
 		case "enter":
 			if m.openedRoomIndex == nil {
@@ -25,11 +27,34 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			*m.openedRoomIndex = m.cursor
+			m.pendingGoTop = false
+
+		case "g":
+			if m.pendingGoTop {
+				m.cursor = 0
+				m.pendingGoTop = false
+			} else {
+				m.pendingGoTop = true
+			}
+
+		case "G":
+			if len(m.Rooms) > 0 {
+				m.cursor = len(m.Rooms) - 1
+			} else {
+				m.cursor = 0
+			}
+			m.pendingGoTop = false
+
+		default:
+			m.pendingGoTop = false
 
 		case "esc":
 			m.openedRoomIndex = nil
+			m.pendingGoTop = false
 		}
 	}
+
+	m.ensureCursorVisible()
 
 	return m, nil
 }
