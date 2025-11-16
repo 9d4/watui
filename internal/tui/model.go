@@ -167,7 +167,7 @@ func (m model) loadContacts() tea.Cmd {
 }
 
 func (m model) syncContactsAppState() tea.Cmd {
-	if m.cli == nil {
+	if m.cli == nil || m.cli.Store == nil || m.cli.Store.AppState == nil {
 		return nil
 	}
 
