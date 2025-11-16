@@ -69,9 +69,7 @@ func (m *model) roomFromConversation(conv *waHistorySync.Conversation, pushnames
 	if title == "" {
 		title = pushnames[jid]
 	}
-	if title == "" {
-		title = parsed.String()
-	}
+	title = m.resolveTitle(parsed.String(), title)
 
 	lastMessage := conversationSummary(conv)
 	lastTs := conv.GetLastMsgTimestamp()
@@ -104,10 +102,7 @@ func (m *model) roomFromMessage(evt *events.Message) *roomlist.Room {
 		ts = time.Now()
 	}
 
-	title := m.chatTitles[jid.String()]
-	if title == "" {
-		title = jid.String()
-	}
+	title := m.resolveTitle(jid.String(), m.chatTitles[jid.String()])
 
 	summary := summarizeMessage(evt.Message)
 	if summary == "" {

@@ -61,6 +61,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case contactsLoadedMsg:
+		for jid, name := range msg.names {
+			m.applyContactName(jid, name)
+		}
+
 	case clientReadyMsg:
 		m.cli = msg.cli
 		if m.cli == nil {
@@ -72,6 +77,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cli.AddEventHandler(func(evt any) {
 			m.events <- waEvent{evt}
 		})
+
+		appendCmd(m.loadContacts())
+		appendCmd(m.syncContactsAppState())
 
 		if m.cli.Store.ID == nil {
 			m.state = stateWelcome
@@ -207,6 +215,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				evt.Info.Sender.String(),
 				evt.Info.Type,
 			))
+
+		case *events.Contact:
+			if evt.Action != nil {
+				info := types.ContactInfo{
+					FirstName: evt.Action.GetFirstName(),
+					FullName:  evt.Action.GetFullName(),
+				}
+				name := resolveContactName(info, evt.JID.String())
+				m.applyContactName(evt.JID.String(), name)
+			}
+
+		case *events.PushName:
+			name := strings.TrimSpace(evt.NewPushName)
+			if name != "" {
+				m.applyContactName(evt.JID.String(), name)
+			}
 		}
 
 	case errMsg:
@@ -221,7 +245,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width - 2
 		m.height = msg.Height - 2
-		m.roomList = m.roomList.SetViewportHeight(10)
+		m.roomList = m.roomList.SetViewportHeight(m.contentHeight())
 
 	case tea.KeyMsg:
 		key := msg.String()

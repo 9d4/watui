@@ -151,6 +151,21 @@ func (m Model) UpsertRoom(room Room) Model {
 	return m
 }
 
+func (m Model) UpdateTitle(jid, title string) Model {
+	if title == "" {
+		return m
+	}
+
+	for i := range m.Rooms {
+		if m.Rooms[i].ID == jid {
+			m.Rooms[i].Title = title
+			break
+		}
+	}
+
+	return m
+}
+
 func (m Model) SetViewportHeight(h int) Model {
 	if h < 1 {
 		h = 1
